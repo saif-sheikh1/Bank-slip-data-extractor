@@ -1,0 +1,65 @@
+import cv2
+import pytesseract
+import openpyxl
+
+def extract_text_from_axis(image, x_start, x_end, y_start, y_end):
+    # Extract ROI based on predefined x and y ranges
+    roi = image[y_start:y_end, x_start:x_end]
+
+    # Convert the ROI to grayscale
+    gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+    # Apply image processing techniques if needed (e.g., thresholding, blurring)
+
+    # Use Tesseract OCR to extract text
+    text = pytesseract.image_to_string(gray_roi)
+
+    return text.strip()
+
+def extract_serial_and_amount(image_path, serial_axis, amount_axis):
+    img = cv2.imread(image_path)
+
+    if img is None:
+        print(f"Error: Unable to read the image from {image_path}")
+        return None
+
+    # Extract serial number and amount based on specified axes
+    serial_number = extract_text_from_axis(img, *serial_axis)
+    amount = extract_text_from_axis(img, *amount_axis)
+
+    return serial_number, amount
+
+def process_images(image_paths, serial_axis, amount_axis, output_file_path):
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Results"
+    sheet["A1"] = "Serial Number"
+    sheet["B1"] = "Amount"
+
+    total_amount = 0
+
+    for i, image_path in enumerate(image_paths, start=2):
+        serial_number, amount = extract_serial_and_amount(image_path, serial_axis, amount_axis)
+
+        # Remove commas from the amount string before converting to float
+        amount = amount.replace(",", "")
+
+        total_amount += float(amount)  # Convert amount to float for numeric addition
+
+        sheet.cell(row=i, column=1, value=serial_number)
+        sheet.cell(row=i, column=2, value=amount)
+
+    sheet.cell(row=i+1, column=1, value="Total Amount")
+    sheet.cell(row=i+1, column=2, value=total_amount)
+
+    workbook.save(output_file_path)
+
+    print("Results saved to:", output_file_path)
+
+# Example usage with predefined x and y ranges for serial number and amount
+image_paths = ["D:/internship/p1/2.png", "D:/internship/p1/3.png", "D:/internship/p1/4.png"]
+serial_axis = (20, 100, 650, 700)
+amount_axis = (680, 870, 250, 400)
+output_file_path = "D:/internship/p1/output.xlsx"
+
+process_images(image_paths, serial_axis, amount_axis, output_file_path)
